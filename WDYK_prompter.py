@@ -3,7 +3,7 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-genai.configure(api_key="YOUR GEMINI API KEY HERE")
+genai.configure(api_key="INPUT YOUR API KEY HERE")
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 knowledge = ["basic math"]
@@ -16,6 +16,32 @@ def index():
     return render_template(
         "index.html", knowledge=", ".join(knowledge), topic=topic, response=response
     )
+
+
+@app.route("/suggest", methods=["POST"])
+def suggest_topic():
+    global response, knowledge, topic
+    new_knowledge = request.form.get("knowledge")
+    new_topic = request.form.get("topic")
+
+    if new_knowledge:
+        knowledge = new_knowledge.split(", ")
+
+    if new_topic:
+        topic = new_topic
+
+    prompt = f"""
+    Based on my current knowledge:
+    {", ".join(knowledge)}
+    
+    What new topic should I learn next?
+    Please suggest only one topic, and please only include that topic in your response.
+    Feel free to get really creative with it! Choose something that's fun and interesting.
+    It doesn't strictly need to be related to what I already know.
+    Do not suggest {topic} or anything similar to it.
+    """
+    suggestion = model.generate_content(prompt).text.strip()
+    return jsonify({"suggested_topic": suggestion})
 
 
 @app.route("/generate", methods=["POST"])

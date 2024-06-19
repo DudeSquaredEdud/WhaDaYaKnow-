@@ -96,7 +96,8 @@
         #knowledgeMenu {
             width: 400px; /* Increased width for better visibility */
             height: 200px; /* Increased height for better visibility */
-            left: 1300px !important;
+            left: 50%; /* Center the menu horizontally */
+            transform: translateX(-50%); /* Adjust position to truly center based on width */
         }
         .column {
             flex: 1;
@@ -137,6 +138,7 @@
         <label for="topic">Topic:</label>
         <input type="text" id="topic" name="topic" value="{{ topic }}">
         <button type="submit">Generate Response</button>
+        <button type="button" onclick="suggestTopic()">Suggest Topic</button>
     </form>
     <div id="response" class="response-layout">
         <div class="column" id="prerequisites"></div>
@@ -146,6 +148,7 @@
     <div id="topicMenu">
         <button onclick="addToKnowledge()">Add to Knowledge</button>
         <button onclick="setAsTopic()">Set as Topic</button>
+        <button onclick="googleSubject()">Google Subject</button>
     </div>
     <div id="loading" class="loading">Loading...</div>
 
@@ -216,6 +219,11 @@
             document.getElementById('topicMenu').style.display = 'none';
         }
 
+        function googleSubject() {
+            const query = encodeURIComponent(window.selectedTopic);
+            window.open(`https://www.google.com/search?q=${query}`, '_blank');
+        }
+
         function showThemeMenu() {
             const menu = document.getElementById('themeMenu');
             menu.style.display = 'block';
@@ -271,7 +279,21 @@
             document.getElementById('generateForm').style.background = currentTheme.formBg;
             document.getElementById('themeMenu').style.display = 'none';
         }
+
+        function suggestTopic() {
+            const formData = new FormData();
+            formData.append('knowledge', document.getElementById('knowledge').value);
+            formData.append('topic', document.getElementById('topic').value);
+
+            fetch('/suggest', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('topic').value = data.suggested_topic;
+            });
+        }
     </script>
 </body>
 </html>
-
