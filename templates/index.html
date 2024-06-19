@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- SECTION: Meta Information -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive knowledge and topic prompter for learning paths">
+    <meta name="keywords" content="WDYK, learning, education, knowledge, topic, prompter">
+    <title>WDYK</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- SECTION: Styles -->
+    <style>
+        :root {
+            --light-theme-background: #f4f4f9;
+            --light-theme-text: #333;
+            --light-theme-primary: #007BFF;
+            --light-theme-secondary: #0056b3;
+            --light-theme-form-bg: #ffffff;
+
+            --dark-theme-background: #333;
+            --dark-theme-text: #f4f4f9;
+            --dark-theme-primary: #22AB22;
+            --dark-theme-secondary: #0056b3;
+            --dark-theme-form-bg: #424242;
+
+            --purple-theme-background: #434;
+            --purple-theme-text: #e0e0e0;
+            --purple-theme-primary: #4b0082;
+            --purple-theme-secondary: #800080;
+            --purple-theme-form-bg: linear-gradient(135deg, #2c003e, #2b0082);
+
+            --dark-red-theme-background: #330000;
+            --dark-red-theme-text: #f4f4f9;
+            --dark-red-theme-primary: #550000;
+            --dark-red-theme-secondary: #770000;
+            --dark-red-theme-form-bg: #440000;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 40px;
+            background-color: var(--light-theme-background);
+            color: var(--light-theme-text);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        h1, h2 {
+            color: var(--light-theme-secondary);
+        }
+        form#generateForm {
+            background: var(--light-theme-form-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: var(--light-theme-primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: var(--light-theme-secondary);
+        }
+        .topic-link {
+            color: var(--light-theme-primary);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .topic-link:hover {
+            color: var(--light-theme-secondary);
+        }
+        #topicMenu, #themeMenu, #knowledgeMenu {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            padding: 12px 16px;
+            z-index: 1;
+        }
+        #knowledgeMenu {
+            width: 400px; /* Increased width for better visibility */
+            height: 200px; /* Increased height for better visibility */
+            left: 1300px !important;
+        }
+        .column {
+            flex: 1;
+            padding: 10px;
+        }
+        #themeSwitcher, #knowledgePopup {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: var(--light-theme-primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        #knowledgePopup {
+            right: 130px; /* Adjust position */
+        }
+    </style>
+</head>
+<body>
+    <button id="themeSwitcher" onclick="showThemeMenu()">Themes</button>
+    <button id="knowledgePopup" onclick="showKnowledgeMenu()">Knowledge</button>
+    <div id="themeMenu">
+        <button onclick="switchTheme('light')">Light Theme</button>
+        <button onclick="switchTheme('dark')">Dark Theme</button>
+        <button onclick="switchTheme('purple')">Purple Theme</button>
+        <button onclick="switchTheme('dark-red')">Dark Red Theme</button>
+    </div>
+    <div id="knowledgeMenu">
+        <input type="text" id="knowledge" name="knowledge" value="{{ knowledge }}">
+        <button onclick="saveKnowledge()">Save</button>
+    </div>
+    <!-- SECTION: Main Content -->
+    <h1>WhaDaYaKnow? Learning tracker</h1>
+    <form id="generateForm">
+        <label for="topic">Topic:</label>
+        <input type="text" id="topic" name="topic" value="{{ topic }}">
+        <button type="submit">Generate Response</button>
+    </form>
+    <div id="response" class="response-layout">
+        <div class="column" id="prerequisites"></div>
+        <div class="column" id="subjects"></div>
+        <div class="column" id="subjectsToTry"></div>
+    </div>
+    <div id="topicMenu">
+        <button onclick="addToKnowledge()">Add to Knowledge</button>
+        <button onclick="setAsTopic()">Set as Topic</button>
+    </div>
+    <div id="loading" class="loading">Loading...</div>
+
+    <!-- SECTION: Scripts -->
+    <script>
+        // Load saved knowledge and topic from localStorage
+        window.onload = function() {
+            const savedKnowledge = localStorage.getItem('knowledge');
+            const savedTopic = localStorage.getItem('topic');
+            if (savedKnowledge) {
+                document.getElementById('knowledge').value = savedKnowledge;
+            }
+            if (savedTopic) {
+                document.getElementById('topic').value = savedTopic;
+            }
+        };
+
+        document.getElementById('generateForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const knowledge = document.getElementById('knowledge').value;
+            const topic = document.getElementById('topic').value;
+            formData.append('knowledge', knowledge);
+            formData.append('topic', topic);
+            console.log(knowledge, topic);  // Check the values being captured
+            console.log(formData);
+            const loading = document.getElementById('loading');
+            const responseElement = document.getElementById('response');
+            loading.style.display = 'block';
+            responseElement.style.display = 'none';
+            fetch('/generate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const prerequisites = data.response.match(/Prerequisites: (.*?)(?=Subjects:|$)/s)[1].split(/,\s*(?![^()]*\))/);
+                const subjects = data.response.match(/Subjects: (.*?)(?=Subjects to Try:|$)/s)[1].split(/,\s*(?![^()]*\))/);
+                const subjectsToTry = data.response.match(/Subjects to Try: (.*?)(?=$)/s)[1].split(/,\s*(?![^()]*\))/);
+
+                document.getElementById('prerequisites').innerHTML = '<h3>Prerequisites</h3>' + prerequisites.map(topic => `<div class="topic-link" onclick="showMenu(this)">${topic}</div>`).join('');
+                document.getElementById('subjects').innerHTML = '<h3>Subjects</h3>' + subjects.map(topic => `<div class="topic-link" onclick="showMenu(this)">${topic}</div>`).join('');
+                document.getElementById('subjectsToTry').innerHTML = '<h3>Subjects to Try</h3>' + subjectsToTry.map(topic => `<div class="topic-link" onclick="showMenu(this)">${topic}</div>`).join('');
+                loading.style.display = 'none';
+                responseElement.style.display = 'flex';
+            });
+        });
+
+        function showMenu(element) {
+            const menu = document.getElementById('topicMenu');
+            menu.style.display = 'block';
+            menu.style.left = `${element.getBoundingClientRect().left}px`;
+            menu.style.top = `${element.getBoundingClientRect().bottom + 5}px`;
+            window.selectedTopic = element.textContent;
+        }
+
+        function addToKnowledge() {
+            const knowledgeInput = document.getElementById('knowledge');
+            knowledgeInput.value += `, ${window.selectedTopic}`;
+            localStorage.setItem('knowledge', knowledgeInput.value); // Save updated knowledge to localStorage
+            document.getElementById('topicMenu').style.display = 'none';
+        }
+
+        function setAsTopic() {
+            const topicInput = document.getElementById('topic');
+            topicInput.value = window.selectedTopic;
+            localStorage.setItem('topic', topicInput.value); // Save updated topic to localStorage
+            document.getElementById('topicMenu').style.display = 'none';
+        }
+
+        function showThemeMenu() {
+            const menu = document.getElementById('themeMenu');
+            menu.style.display = 'block';
+            menu.style.left = `${document.getElementById('themeSwitcher').getBoundingClientRect().left}px`;
+            menu.style.top = `${document.getElementById('themeSwitcher').getBoundingClientRect().bottom + 5}px`;
+        }
+
+        function showKnowledgeMenu() {
+            const menu = document.getElementById('knowledgeMenu');
+            menu.style.display = 'block';
+            menu.style.left = `${document.getElementById('knowledgePopup').getBoundingClientRect().left}px`;
+            menu.style.top = `${document.getElementById('knowledgePopup').getBoundingClientRect().bottom + 5}px`;
+        }
+
+        function saveKnowledge() {
+            const knowledgeInput = document.getElementById('knowledge');
+            localStorage.setItem('knowledge', knowledgeInput.value); // Save updated knowledge to localStorage
+            document.getElementById('knowledgeMenu').style.display = 'none';
+        }
+
+        function switchTheme(theme) {
+            const body = document.body;
+            const themeProperties = {
+                'light': {
+                    background: 'var(--light-theme-background)',
+                    text: 'var(--light-theme-text)',
+                    primary: 'var(--light-theme-primary)',
+                    formBg: 'var(--light-theme-form-bg)'
+                },
+                'dark': {
+                    background: 'var(--dark-theme-background)',
+                    text: 'var(--dark-theme-text)',
+                    primary: 'var(--dark-theme-primary)',
+                    formBg: 'var(--dark-theme-form-bg)'
+                },
+                'purple': {
+                    background: 'var(--purple-theme-background)',
+                    text: 'var(--purple-theme-text)',
+                    primary: 'var(--purple-theme-primary)',
+                    formBg: 'var(--purple-theme-form-bg)'
+                },
+                'dark-red': {
+                    background: 'var(--dark-red-theme-background)',
+                    text: 'var(--dark-red-theme-text)',
+                    primary: 'var(--dark-red-theme-primary)',
+                    formBg: 'var(--dark-red-theme-form-bg)'
+                }
+            };
+            const currentTheme = themeProperties[theme];
+            body.style.backgroundColor = currentTheme.background;
+            body.style.color = currentTheme.text;
+            document.getElementById('themeSwitcher').style.background = currentTheme.primary;
+            document.getElementById('generateForm').style.background = currentTheme.formBg;
+            document.getElementById('themeMenu').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
+
