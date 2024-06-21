@@ -24,17 +24,17 @@
             --dark-theme-secondary: #0056b3;
             --dark-theme-form-bg: #424242;
 
-            --purple-theme-background: #434;
-            --purple-theme-text: #e0e0e0;
-            --purple-theme-primary: #4b0082;
-            --purple-theme-secondary: #800080;
-            --purple-theme-form-bg: linear-gradient(135deg, #2c003e, #2b0082);
+            --purple-theme-background: #4e2571;
+            --purple-theme-text: #eae2f8;
+            --purple-theme-primary: #9a4dff;
+            --purple-theme-secondary: #d6a8ff;
+            --purple-theme-form-bg: linear-gradient(135deg, #6a1b9a, #b39ddb);
 
-            --dark-red-theme-background: #330000;
-            --dark-red-theme-text: #f4f4f9;
-            --dark-red-theme-primary: #550000;
-            --dark-red-theme-secondary: #770000;
-            --dark-red-theme-form-bg: #440000;
+            --dark-red-theme-background: #540000;
+            --dark-red-theme-text: #ffebee;
+            --dark-red-theme-primary: #b71c1c;
+            --dark-red-theme-secondary: #f44336;
+            --dark-red-theme-form-bg: linear-gradient(135deg, #880e4f, #c62828);
         }
 
         body {
@@ -85,7 +85,7 @@
         .topic-link:hover {
             color: var(--light-theme-secondary);
         }
-        #topicMenu, #themeMenu, #knowledgeMenu {
+        #topicMenu, #themeMenu, #knowledgeMenu, #explanationMenu {
             display: none;
             position: absolute;
             background-color: #f9f9f9;
@@ -117,6 +117,13 @@
         #knowledgePopup {
             right: 130px; /* Adjust position */
         }
+        #explanationArea {
+            padding: 20px;
+            background: var(--light-theme-form-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -140,6 +147,7 @@
         <button type="submit">Generate Response</button>
         <button type="button" onclick="suggestTopic()">Suggest Topic</button>
     </form>
+    <div id="loading" class="loading">Loading...</div>
     <div id="response" class="response-layout">
         <div class="column" id="prerequisites"></div>
         <div class="column" id="subjects"></div>
@@ -149,10 +157,16 @@
         <button onclick="addToKnowledge()">Add to Knowledge</button>
         <button onclick="setAsTopic()">Set as Topic</button>
         <button onclick="googleSubject()">Google Subject</button>
+        <button onclick="explainSubject()">Explain Subject</button>
     </div>
-    <div id="loading" class="loading">Loading...</div>
+    <div id="explanationArea">
+        <h3>Subject Explanation</h3>
+        <p id="subjectExplanation">Select a subject to see the explanation here.</p>
+    </div>
 
     <!-- SECTION: Scripts -->
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // Load saved knowledge and topic from localStorage
         window.onload = function() {
@@ -203,6 +217,14 @@
             menu.style.left = `${element.getBoundingClientRect().left}px`;
             menu.style.top = `${element.getBoundingClientRect().bottom + 5}px`;
             window.selectedTopic = element.textContent;
+
+            // Close the menu when clicking anywhere on the document
+            document.addEventListener('click', function closeMenu(event) {
+                if (!menu.contains(event.target) && event.target !== element) {
+                    menu.style.display = 'none';
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
         }
 
         function addToKnowledge() {
@@ -222,6 +244,32 @@
         function googleSubject() {
             const query = encodeURIComponent(window.selectedTopic);
             window.open(`https://www.google.com/search?q=${query}`, '_blank');
+        }
+
+        function explainSubject() {
+            document.getElementById('subjectExplanation').innerHTML = 'Loading...';
+            fetch('/explain', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `subject=${encodeURIComponent(window.selectedTopic)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.explanation) {
+                    document.getElementById('subjectExplanation').innerHTML = marked.parse(data.explanation);
+                    document.getElementById('explanationArea').style.display = 'block';
+                } else {
+                    document.getElementById('subjectExplanation').innerHTML = 'No explanation available.';
+                    document.getElementById('explanationArea').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error explaining the subject:', error);
+                document.getElementById('subjectExplanation').innerHTML = 'Failed to fetch explanation.';
+                document.getElementById('explanationArea').style.display = 'block';
+            });
         }
 
         function showThemeMenu() {
@@ -278,8 +326,15 @@
             document.getElementById('themeSwitcher').style.background = currentTheme.primary;
             document.getElementById('generateForm').style.background = currentTheme.formBg;
             document.getElementById('themeMenu').style.display = 'none';
-        }
 
+            // Apply theme to all elements
+            const allElements = document.querySelectorAll('*');
+            allElements.forEach(element => {
+                element.style.backgroundColor = currentTheme.background;
+                element.style.color = currentTheme.text;
+            });
+        }
+        
         function suggestTopic() {
             const formData = new FormData();
             formData.append('knowledge', document.getElementById('knowledge').value);

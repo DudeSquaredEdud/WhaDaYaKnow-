@@ -3,7 +3,7 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-genai.configure(api_key="INPUT YOUR API KEY HERE")
+genai.configure(api_key="INPUT API KEY HERE")
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 knowledge = ["basic math"]
@@ -42,6 +42,26 @@ def suggest_topic():
     """
     suggestion = model.generate_content(prompt).text.strip()
     return jsonify({"suggested_topic": suggestion})
+
+
+@app.route("/explain", methods=["POST"])
+def explain_subject():
+    global response, knowledge, topic
+    subject_to_explain = request.form.get("subject")
+
+    if not subject_to_explain:
+        return jsonify({"error": "No subject provided"}), 400
+
+    prompt = f"""
+    Please explain the following subject in detail:
+    {subject_to_explain}
+    
+    Assume the reader has a basic understanding of related fundamental concepts.
+    Provide a comprehensive explanation that includes key concepts, important details, and practical applications.
+    """
+
+    explanation = model.generate_content(prompt).text.strip()
+    return jsonify({"subject": subject_to_explain, "explanation": explanation})
 
 
 @app.route("/generate", methods=["POST"])
